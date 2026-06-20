@@ -1,6 +1,5 @@
-// main.dart
+// main.dart - Fully Responsive Mobile & Desktop
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
 void main() {
   runApp(const BlackCatGameApp());
@@ -20,7 +19,6 @@ class BlackCatGameApp extends StatelessWidget {
           primary: const Color(0xFF6C63FF),
           secondary: const Color(0xFFFF6584),
         ),
-        fontFamily: 'Poppins',
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
@@ -29,25 +27,59 @@ class BlackCatGameApp extends StatelessWidget {
   }
 }
 
-class LandingPage extends StatelessWidget {
+// ============ LANDING PAGE ============
+class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
+
+  @override
+  State<LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<LandingPage> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _featuresKey = GlobalKey();
+  final GlobalKey _gamesKey = GlobalKey();
+  final GlobalKey _testimonialsKey = GlobalKey();
+
+  void _scrollToSection(GlobalKey key) {
+    final context = key.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 800),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F0F1A),
-      body: SingleChildScrollView(
-        child: Column(
-          children: const [
-            NavbarSection(),
-            HeroSection(),
-            FeaturesSection(),
-            GamesSection(),
-            TestimonialsSection(),
-            CTASection(),
-            FooterSection(),
-          ],
-        ),
+      body: Column(
+        children: [
+          NavbarSection(
+            scrollToFeatures: () => _scrollToSection(_featuresKey),
+            scrollToGames: () => _scrollToSection(_gamesKey),
+            scrollToTestimonials: () => _scrollToSection(_testimonialsKey),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  const HeroSection(),
+                  FeaturesSection(key: _featuresKey),
+                  GamesSection(key: _gamesKey),
+                  TestimonialsSection(key: _testimonialsKey),
+                  const CTASection(),
+                  const FooterSection(),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -55,7 +87,16 @@ class LandingPage extends StatelessWidget {
 
 // ============ NAVBAR SECTION ============
 class NavbarSection extends StatefulWidget {
-  const NavbarSection({super.key});
+  final VoidCallback scrollToFeatures;
+  final VoidCallback scrollToGames;
+  final VoidCallback scrollToTestimonials;
+
+  const NavbarSection({
+    super.key,
+    required this.scrollToFeatures,
+    required this.scrollToGames,
+    required this.scrollToTestimonials,
+  });
 
   @override
   State<NavbarSection> createState() => _NavbarSectionState();
@@ -63,76 +104,154 @@ class NavbarSection extends StatefulWidget {
 
 class _NavbarSectionState extends State<NavbarSection> {
   bool isMobileMenuOpen = false;
+  int _selectedIndex = 0;
+  bool _isScrolled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final scrollController = _findScrollController(context);
+      if (scrollController != null) {
+        scrollController.addListener(_onScroll);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    final scrollController = _findScrollController(context);
+    if (scrollController != null) {
+      scrollController.removeListener(_onScroll);
+    }
+    super.dispose();
+  }
+
+  ScrollController? _findScrollController(BuildContext context) {
+    final landingPage = context.findAncestorStateOfType<_LandingPageState>();
+    if (landingPage != null) {
+      return landingPage._scrollController;
+    }
+    return null;
+  }
+
+  void _onScroll() {
+    final scrollController = _findScrollController(context);
+    if (scrollController != null) {
+      final scrolled = scrollController.offset > 20;
+      if (scrolled != _isScrolled) {
+        setState(() {
+          _isScrolled = scrolled;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 40,
+        vertical: isMobile ? 10 : 16,
+      ),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E).withOpacity(0.9),
+        color: _isScrolled
+            ? const Color(0xFF1A1A2E)
+            : const Color(0xFF1A1A2E).withOpacity(0.95),
         border: Border(
           bottom: BorderSide(
             color: const Color(0xFF6C63FF).withOpacity(0.2),
           ),
         ),
+        boxShadow: _isScrolled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Logo
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF),
-                  borderRadius: BorderRadius.circular(10),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedIndex = 0;
+              });
+            },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: isMobile ? 32 : 40,
+                  height: isMobile ? 32 : 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C63FF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.games,
+                    color: Colors.white,
+                    size: isMobile ? 18 : 24,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.games,
-                  color: Colors.white,
-                  size: 24,
+                const SizedBox(width: 8),
+                Text(
+                  'BlackCatGame',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isMobile ? 14 : 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'BlackCatGame',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // Desktop Menu
           if (!isMobile)
             Row(
               children: [
-                _buildNavItem('Home', true),
-                _buildNavItem('Features', false),
-                _buildNavItem('Games', false),
-                _buildNavItem('Testimonials', false),
-                const SizedBox(width: 20),
+                _buildNavItem('Home', 0, () {
+                  setState(() => _selectedIndex = 0);
+                }),
+                _buildNavItem('Features', 1, () {
+                  setState(() => _selectedIndex = 1);
+                  widget.scrollToFeatures();
+                }),
+                _buildNavItem('Games', 2, () {
+                  setState(() => _selectedIndex = 2);
+                  widget.scrollToGames();
+                }),
+                _buildNavItem('Testimonials', 3, () {
+                  setState(() => _selectedIndex = 3);
+                  widget.scrollToTestimonials();
+                }),
+                const SizedBox(width: 16),
                 ElevatedButton(
                   onPressed: () {},
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                      horizontal: 20,
+                      vertical: 10,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),
                   ),
-                  child: const Text('Get Started'),
+                  child: const Text(
+                    'Get Started',
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ),
               ],
             ),
@@ -140,10 +259,12 @@ class _NavbarSectionState extends State<NavbarSection> {
           // Mobile Menu Button
           if (isMobile)
             IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
               icon: Icon(
                 isMobileMenuOpen ? Icons.close : Icons.menu,
                 color: Colors.white,
-                size: 30,
+                size: 24,
               ),
               onPressed: () {
                 setState(() {
@@ -156,15 +277,34 @@ class _NavbarSectionState extends State<NavbarSection> {
     );
   }
 
-  Widget _buildNavItem(String title, bool isActive) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isActive ? const Color(0xFF6C63FF) : Colors.white70,
-          fontSize: 16,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+  Widget _buildNavItem(String title, int index, VoidCallback onTap) {
+    final isActive = _selectedIndex == index;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: isActive ? const Color(0xFF6C63FF) : Colors.white70,
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+            if (isActive)
+              Container(
+                margin: const EdgeInsets.only(top: 2),
+                height: 2,
+                width: 16,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -177,83 +317,147 @@ class HeroSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+    final width = MediaQuery.of(context).size.width;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 80),
-      child: Row(
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 40,
+        vertical: isMobile ? 24 : 80,
+      ),
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+          // Hero Image - Mobile di atas
+          Container(
+            width: double.infinity,
+            height: isMobile ? 180 : 400,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF6C63FF).withOpacity(0.4),
+                  const Color(0xFFFF6584).withOpacity(0.4),
+                ],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: isMobile ? 60 : 120,
+                    height: isMobile ? 60 : 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(isMobile ? 30 : 60),
+                    ),
+                    child: Icon(
+                      Icons.catching_pokemon,
+                      color: Colors.white,
+                      size: isMobile ? 30 : 60,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6C63FF).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                  SizedBox(height: isMobile ? 8 : 20),
+                  Text(
+                    '🎮 Play & Learn',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isMobile ? 16 : 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.star,
-                        color: Color(0xFFFFD700),
-                        size: 16,
+                  SizedBox(height: isMobile ? 2 : 8),
+                  Text(
+                    'Interactive Educational Games',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: isMobile ? 11 : 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: isMobile ? 20 : 40),
+
+          // Content
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Rating Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.star,
+                      color: Color(0xFFFFD700),
+                      size: 12,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '⭐ 4.9/5 Rating',
+                      style: TextStyle(
+                        color: const Color(0xFF6C63FF),
+                        fontSize: isMobile ? 10 : 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        '⭐ 4.9/5 Rating',
-                        style: TextStyle(
-                          color: Color(0xFF6C63FF),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 30),
-                const Text(
-                  'Learn While Playing with',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w300,
-                  ),
+              ),
+              SizedBox(height: isMobile ? 12 : 30),
+
+              // Title
+              Text(
+                'Learn While Playing with',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: isMobile ? 12 : 20,
+                  fontWeight: FontWeight.w300,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'BlackCatGame',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 56,
-                    fontWeight: FontWeight.bold,
-                    height: 1.1,
-                  ),
+              ),
+              SizedBox(height: isMobile ? 2 : 4),
+              Text(
+                'BlackCatGame',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isMobile ? 28 : 56,
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Educational Games',
-                  style: TextStyle(
-                    color: Color(0xFF6C63FF),
-                    fontSize: 56,
-                    fontWeight: FontWeight.bold,
-                    height: 1.1,
-                  ),
+              ),
+              Text(
+                'Educational Games',
+                style: TextStyle(
+                  color: const Color(0xFF6C63FF),
+                  fontSize: isMobile ? 28 : 56,
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
                 ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Interactive educational games that make learning fun!\n'
-                  'Master math, science, and languages through play.',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 18,
-                    height: 1.6,
-                  ),
+              ),
+              SizedBox(height: isMobile ? 8 : 16),
+
+              // Description
+              Text(
+                isMobile
+                    ? 'Interactive educational games that make learning fun! Master math, science, and languages through play.'
+                    : 'Interactive educational games that make learning fun!\nMaster math, science, and languages through play.',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: isMobile ? 13 : 18,
+                  height: 1.6,
                 ),
-                const SizedBox(height: 40),
+              ),
+              SizedBox(height: isMobile ? 16 : 24),
+
+              // Buttons
+              if (!isMobile)
                 Row(
                   children: [
                     ElevatedButton(
@@ -268,18 +472,13 @@ class HeroSection extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        elevation: 8,
-                        shadowColor: const Color(0xFF6C63FF).withOpacity(0.4),
                       ),
                       child: const Text(
                         'Start Learning Now',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontSize: 16),
                       ),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 16),
                     OutlinedButton(
                       onPressed: () {},
                       style: OutlinedButton.styleFrom(
@@ -293,140 +492,78 @@ class HeroSection extends StatelessWidget {
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      child: const Text(
-                        'Watch Demo',
-                        style: TextStyle(fontSize: 16),
-                      ),
+                      child: const Text('Watch Demo'),
                     ),
                   ],
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6C63FF),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: const Text(
+                      'Start Learning',
+                      style: TextStyle(fontSize: 15),
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 40),
-                // Stats
-                Row(
-                  children: [
-                    _buildStat('10K+', 'Active Students'),
-                    _buildDivider(),
-                    _buildStat('50+', 'Educational Games'),
-                    _buildDivider(),
-                    _buildStat('98%', 'Satisfaction Rate'),
-                  ],
-                ),
-              ],
-            ),
+              SizedBox(height: isMobile ? 20 : 40),
+
+              // Stats
+              Wrap(
+                spacing: isMobile ? 8 : 30,
+                runSpacing: isMobile ? 8 : 10,
+                alignment: WrapAlignment.spaceEvenly,
+                children: [
+                  _buildStat('10K+', 'Active Students', isMobile),
+                  _buildDivider(isMobile),
+                  _buildStat('50+', 'Educational Games', isMobile),
+                  _buildDivider(isMobile),
+                  _buildStat('98%', 'Satisfaction Rate', isMobile),
+                ],
+              ),
+            ],
           ),
-         // Hero Image
-// Hero Image
-Expanded(
-  child: Container(
-    height: 400,
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(30),
-      image: const DecorationImage(
-        image: AssetImage('assets/images/hero_image.png'), // Ganti dengan path gambar Anda
-        fit: BoxFit.cover,
-      ),
-    ),
-    child: Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.transparent,
-            Colors.black.withOpacity(0.7),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(60),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.3),
-                  width: 2,
-                ),
-              ),
-              child: const Icon(
-                Icons.catching_pokemon,
-                color: Colors.white,
-                size: 60,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '🎮 Play & Learn',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    blurRadius: 10,
-                    color: Colors.black45,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Interactive Educational Games',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                shadows: [
-                  Shadow(
-                    blurRadius: 10,
-                    color: Colors.black45,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  ),
-),
         ],
       ),
     );
   }
 
-  Widget _buildStat(String number, String label) {
+  Widget _buildStat(String number, String label, bool isMobile) {
     return Column(
       children: [
         Text(
           number,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 28,
+            fontSize: isMobile ? 18 : 28,
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white60,
-            fontSize: 14,
+            fontSize: isMobile ? 10 : 14,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider(bool isMobile) {
     return Container(
       width: 1,
-      height: 50,
+      height: isMobile ? 30 : 50,
       color: Colors.white24,
-      margin: const EdgeInsets.symmetric(horizontal: 30),
     );
   }
 }
@@ -476,41 +613,49 @@ class FeaturesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+    final crossAxisCount = isMobile ? 1 : (MediaQuery.of(context).size.width < 1024 ? 2 : 3);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 40,
+        vertical: isMobile ? 30 : 60,
+      ),
       color: const Color(0xFF1A1A2E),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Why Choose BlackCatGame?',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 36,
+              fontSize: isMobile ? 22 : 36,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          const Text(
+          SizedBox(height: isMobile ? 4 : 12),
+          Text(
             'Making education fun and effective for every student',
             style: TextStyle(
               color: Colors.white60,
-              fontSize: 18,
+              fontSize: isMobile ? 13 : 18,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 60),
+          SizedBox(height: isMobile ? 24 : 60),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 30,
-              crossAxisSpacing: 30,
-              childAspectRatio: 1.1,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: isMobile ? 12 : 30,
+              crossAxisSpacing: isMobile ? 12 : 30,
+              childAspectRatio: isMobile ? 1.3 : 1.1,
             ),
             itemCount: features.length,
             itemBuilder: (context, index) {
               final feature = features[index];
-              return _buildFeatureCard(feature);
+              return _buildFeatureCard(feature, isMobile);
             },
           ),
         ],
@@ -518,50 +663,55 @@ class FeaturesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureCard(Map<String, dynamic> feature) {
+  Widget _buildFeatureCard(Map<String, dynamic> feature, bool isMobile) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 14 : 24),
       decoration: BoxDecoration(
         color: const Color(0xFF2A2A3E),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0xFF6C63FF).withOpacity(0.1),
         ),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: isMobile ? 40 : 60,
+            height: isMobile ? 40 : 60,
             decoration: BoxDecoration(
               color: (feature['color'] as Color).withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               feature['icon'] as IconData,
               color: feature['color'] as Color,
-              size: 30,
+              size: isMobile ? 20 : 30,
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            feature['title'] as String,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+          SizedBox(width: isMobile ? 12 : 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  feature['title'] as String,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isMobile ? 14 : 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  feature['description'] as String,
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: isMobile ? 11 : 14,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            feature['description'] as String,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -580,7 +730,7 @@ class GamesSection extends StatelessWidget {
       'age': '6-10 years',
       'color': Color(0xFF6C63FF),
       'emoji': '🧮',
-      'description': 'Solve math puzzles and defeat the dragon!',
+      'description': 'Solve math puzzles',
     },
     {
       'title': 'Word Wizard',
@@ -588,7 +738,7 @@ class GamesSection extends StatelessWidget {
       'age': '8-12 years',
       'color': Color(0xFFFF6584),
       'emoji': '📚',
-      'description': 'Build vocabulary through fun word games',
+      'description': 'Build vocabulary',
     },
     {
       'title': 'Science Lab',
@@ -596,7 +746,7 @@ class GamesSection extends StatelessWidget {
       'age': '9-14 years',
       'color': Color(0xFF4ECDC4),
       'emoji': '🔬',
-      'description': 'Conduct virtual science experiments',
+      'description': 'Virtual experiments',
     },
     {
       'title': 'Code Academy',
@@ -604,46 +754,54 @@ class GamesSection extends StatelessWidget {
       'age': '10-16 years',
       'color': Color(0xFFFFD700),
       'emoji': '💻',
-      'description': 'Learn programming through interactive games',
+      'description': 'Learn programming',
     },
   ];
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+    final crossAxisCount = isMobile ? 2 : (MediaQuery.of(context).size.width < 1024 ? 2 : 4);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 40,
+        vertical: isMobile ? 30 : 60,
+      ),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Our Educational Games',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 36,
+              fontSize: isMobile ? 22 : 36,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          const Text(
+          SizedBox(height: isMobile ? 4 : 12),
+          Text(
             'Fun and interactive games for all ages and subjects',
             style: TextStyle(
               color: Colors.white60,
-              fontSize: 18,
+              fontSize: isMobile ? 13 : 18,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 50),
+          SizedBox(height: isMobile ? 20 : 50),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 20,
-              crossAxisSpacing: 20,
-              childAspectRatio: 0.85,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: isMobile ? 10 : 20,
+              crossAxisSpacing: isMobile ? 10 : 20,
+              childAspectRatio: isMobile ? 0.85 : 0.85,
             ),
             itemCount: games.length,
             itemBuilder: (context, index) {
               final game = games[index];
-              return _buildGameCard(game);
+              return _buildGameCard(game, isMobile);
             },
           ),
         ],
@@ -651,7 +809,7 @@ class GamesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildGameCard(Map<String, dynamic> game) {
+  Widget _buildGameCard(Map<String, dynamic> game, bool isMobile) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -662,61 +820,65 @@ class GamesSection extends StatelessWidget {
             const Color(0xFF1A1A2E),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: (game['color'] as Color).withOpacity(0.2),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isMobile ? 10 : 20),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               game['emoji'] as String,
-              style: const TextStyle(fontSize: 50),
+              style: TextStyle(fontSize: isMobile ? 30 : 50),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isMobile ? 4 : 12),
             Text(
               game['title'] as String,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: isMobile ? 13 : 18,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: isMobile ? 2 : 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: (game['color'] as Color).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 game['category'] as String,
                 style: TextStyle(
                   color: game['color'] as Color,
-                  fontSize: 12,
+                  fontSize: isMobile ? 8 : 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isMobile ? 4 : 8),
             Text(
               game['description'] as String,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white60,
-                fontSize: 12,
+                fontSize: isMobile ? 10 : 12,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: isMobile ? 4 : 12),
             Text(
               'Age: ${game['age']}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white38,
-                fontSize: 11,
+                fontSize: isMobile ? 8 : 11,
               ),
             ),
           ],
@@ -733,22 +895,22 @@ class TestimonialsSection extends StatelessWidget {
   final List<Map<String, dynamic>> testimonials = const [
     {
       'name': 'Kins',
-      'role': 'Mother of 2',
+      'role': 'Mother',
       'text': 'BlackCatGame transformed my children\'s attitude towards learning. They actually ask to play educational games now!',
       'rating': 5,
       'avatar': '👩',
     },
     {
       'name': 'Mr. Alex',
-      'role': 'Elementary Teacher',
-      'text': 'I\'ve seen remarkable improvement in my students\' math skills since we started using BlackCatGame in class.',
+      'role': 'Teacher',
+      'text': 'I\'ve seen remarkable improvement in my students\' math skills since we started using BlackCatGame.',
       'rating': 5,
       'avatar': '👨',
     },
     {
       'name': 'Emma Chen',
-      'role': 'Student, Age 10',
-      'text': 'The games are so much fun! I\'ve learned coding and I didn\'t even realize I was learning!',
+      'role': 'Student',
+      'text': 'The games are so much fun! I\'ve learned coding and didn\'t even realize I was learning!',
       'rating': 5,
       'avatar': '🧒',
     },
@@ -756,108 +918,133 @@ class TestimonialsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 40,
+        vertical: isMobile ? 30 : 60,
+      ),
       color: const Color(0xFF1A1A2E),
       child: Column(
         children: [
-          const Text(
+          Text(
             'What People Say',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 36,
+              fontSize: isMobile ? 22 : 36,
               fontWeight: FontWeight.bold,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          const Text(
+          SizedBox(height: isMobile ? 4 : 12),
+          Text(
             'Hear from our happy users',
             style: TextStyle(
               color: Colors.white60,
-              fontSize: 18,
+              fontSize: isMobile ? 13 : 18,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 50),
-          Row(
-            children: testimonials.map((testimonial) {
-              return Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A3E),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF6C63FF).withOpacity(0.1),
-                    ),
+          SizedBox(height: isMobile ? 20 : 50),
+          if (isMobile)
+            Column(
+              children: testimonials.map((testimonial) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildTestimonialCard(testimonial, isMobile),
+                );
+              }).toList(),
+            )
+          else
+            Row(
+              children: testimonials.map((testimonial) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: _buildTestimonialCard(testimonial, isMobile),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF6C63FF).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            child: Center(
-                              child: Text(
-                                testimonial['avatar'] as String,
-                                style: const TextStyle(fontSize: 24),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                testimonial['name'] as String,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                testimonial['role'] as String,
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: List.generate(
-                          5,
-                          (index) => const Icon(
-                            Icons.star,
-                            color: Color(0xFFFFD700),
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        testimonial['text'] as String,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 15,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTestimonialCard(Map<String, dynamic> testimonial, bool isMobile) {
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 14 : 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A3E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF6C63FF).withOpacity(0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: isMobile ? 32 : 50,
+                height: isMobile ? 32 : 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6C63FF).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(isMobile ? 16 : 25),
+                ),
+                child: Center(
+                  child: Text(
+                    testimonial['avatar'] as String,
+                    style: TextStyle(fontSize: isMobile ? 16 : 24),
                   ),
                 ),
-              );
-            }).toList(),
+              ),
+              SizedBox(width: isMobile ? 8 : 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    testimonial['name'] as String,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isMobile ? 13 : 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    testimonial['role'] as String,
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: isMobile ? 10 : 13,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: isMobile ? 8 : 16),
+          Row(
+            children: List.generate(
+              5,
+              (index) => Icon(
+                Icons.star,
+                color: const Color(0xFFFFD700),
+                size: isMobile ? 12 : 18,
+              ),
+            ),
+          ),
+          SizedBox(height: isMobile ? 6 : 12),
+          Text(
+            testimonial['text'] as String,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: isMobile ? 12 : 15,
+              height: 1.5,
+            ),
+            maxLines: isMobile ? 3 : 6,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -871,10 +1058,15 @@ class CTASection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 80),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 40,
+        vertical: isMobile ? 30 : 80,
+      ),
       child: Container(
-        padding: const EdgeInsets.all(60),
+        padding: EdgeInsets.all(isMobile ? 20 : 60),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
@@ -882,84 +1074,64 @@ class CTASection extends StatelessWidget {
               const Color(0xFFFF6584).withOpacity(0.2),
             ],
           ),
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: const Color(0xFF6C63FF).withOpacity(0.2),
           ),
         ),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Ready to Start Learning?',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 40,
+                fontSize: isMobile ? 22 : 40,
                 fontWeight: FontWeight.bold,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: isMobile ? 8 : 12),
+            Text(
               'Join thousands of students who are learning through play',
               style: TextStyle(
                 color: Colors.white60,
-                fontSize: 18,
+                fontSize: isMobile ? 13 : 18,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: isMobile ? 16 : 36),
+            SizedBox(
+              width: isMobile ? double.infinity : null,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6C63FF),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 20 : 48,
+                    vertical: isMobile ? 14 : 18,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: Text(
+                  isMobile ? 'Get Started' : 'Get Started Free',
+                  style: TextStyle(
+                    fontSize: isMobile ? 15 : 20,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 36),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 48,
-                      vertical: 18,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 8,
-                    shadowColor: const Color(0xFF6C63FF).withOpacity(0.4),
-                  ),
-                  child: const Text(
-                    'Get Started Free',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 18,
-                    ),
-                    side: const BorderSide(color: Colors.white30),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    'Learn More',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Text(
+            SizedBox(height: isMobile ? 12 : 24),
+            Text(
               '🎮 No credit card required • Free forever • 100% safe',
               style: TextStyle(
                 color: Colors.white38,
-                fontSize: 14,
+                fontSize: isMobile ? 10 : 14,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -974,82 +1146,147 @@ class FooterSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 40,
+        vertical: isMobile ? 20 : 40,
+      ),
       color: const Color(0xFF0A0A14),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6C63FF),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.games,
-                          color: Colors.white,
-                          size: 18,
-                        ),
+          if (isMobile) ...[
+            // Mobile Footer
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6C63FF),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'BlackCatGame',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: const Icon(
+                        Icons.games,
+                        color: Colors.white,
+                        size: 16,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Making education fun for everyone',
-                    style: TextStyle(
-                      color: Colors.white60,
-                      fontSize: 14,
                     ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'BlackCatGame',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Making education fun for everyone',
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 11,
                   ),
-                ],
-              ),
-              Row(
-                children: [
-                  _buildFooterLink('About'),
-                  _buildFooterLink('Privacy'),
-                  _buildFooterLink('Terms'),
-                  _buildFooterLink('Contact'),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 30),
-          const Divider(color: Colors.white12),
-          const SizedBox(height: 20),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildFooterLink('About'),
+                    _buildFooterLink('Privacy'),
+                    _buildFooterLink('Terms'),
+                    _buildFooterLink('Contact'),
+                  ],
+                ),
+              ],
+            ),
+          ] else ...[
+            // Desktop Footer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6C63FF),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.games,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'BlackCatGame',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Making education fun for everyone',
+                      style: TextStyle(
+                        color: Colors.white60,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildFooterLink('About'),
+                    _buildFooterLink('Privacy'),
+                    _buildFooterLink('Terms'),
+                    _buildFooterLink('Contact'),
+                  ],
+                ),
+              ],
+            ),
+          ],
+          SizedBox(height: isMobile ? 16 : 20),
+          Divider(color: Colors.white12),
+          SizedBox(height: isMobile ? 12 : 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '© 2026 BlackCatGame. All rights reserved.',
+              Text(
+                '© 2026 BlackCatGame',
                 style: TextStyle(
                   color: Colors.white38,
-                  fontSize: 13,
+                  fontSize: isMobile ? 10 : 13,
                 ),
               ),
-              Row(
-                children: [
-                  _buildSocialIcon(Icons.facebook),
-
-                ],
-              ),
+              if (!isMobile)
+                Row(
+                  children: [
+                    _buildSocialIcon(Icons.facebook),
+                    _buildSocialIcon(Icons.facebook),
+                    _buildSocialIcon(Icons.facebook),
+                  ],
+                ),
             ],
           ),
         ],
@@ -1058,31 +1295,28 @@ class FooterSection extends StatelessWidget {
   }
 
   Widget _buildFooterLink(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white60,
-          fontSize: 14,
-        ),
+    return Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white60,
+        fontSize: 12,
       ),
     );
   }
 
   Widget _buildSocialIcon(IconData icon) {
     return Container(
-      margin: const EdgeInsets.only(left: 12),
-      width: 36,
-      height: 36,
+      margin: const EdgeInsets.only(left: 10),
+      width: 30,
+      height: 30,
       decoration: BoxDecoration(
         color: Colors.white10,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Icon(
         icon,
         color: Colors.white60,
-        size: 18,
+        size: 14,
       ),
     );
   }

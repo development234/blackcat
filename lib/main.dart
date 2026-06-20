@@ -150,7 +150,6 @@ class _NavbarSectionState extends State<NavbarSection> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
-    final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -160,6 +159,7 @@ class _NavbarSectionState extends State<NavbarSection> {
       decoration: BoxDecoration(
         color: _isScrolled
             ? const Color(0xFF1A1A2E)
+            // ignore: deprecated_member_use
             : const Color(0xFF1A1A2E).withOpacity(0.95),
         border: Border(
           bottom: BorderSide(
@@ -318,7 +318,6 @@ class HeroSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
-    final width = MediaQuery.of(context).size.width;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -327,7 +326,6 @@ class HeroSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Hero Image - Mobile di atas
           Container(
             width: double.infinity,
             height: isMobile ? 180 : 400,
